@@ -1,0 +1,31 @@
+name: GDrive to Proton RAM Stream
+on:
+  workflow_dispatch:
+    inputs:
+      source_path:
+        description: 'Folder in Google Drive (leave blank for root)'
+        required: false
+        default: ''
+      dest_path:
+        description: 'Folder in Proton Drive'
+        required: true
+        default: 'GoogleDrive_Backup'
+jobs:
+  migrate-data:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Latest Rclone
+        run: sudo -v ; curl https://rclone.org/install.sh | sudo bash
+
+      - name: Inject Configuration Secret
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+
+      - name: Stream Files to Proton
+        run: |
+          rclone copy "gdrive:${{ github.event.inputs.source_path }}" "proton:${{ github.event.inputs.dest_path }}" \
+            --vfs-cache-mode off \
+            --stats 30s \
+            --tpslimit 10 \
+            -v
