@@ -18,9 +18,11 @@ jobs:
         run: sudo -v ; curl https://rclone.org/install.sh | sudo bash
 
       - name: Inject Configuration Secret
+        env:
+          SECRET_CONF: ${{ secrets.RCLONE_CONF }}
         run: |
           mkdir -p ~/.config/rclone
-          echo "${{ secrets.RCLONE_CONF }}" > ~/.config/rclone/rclone.conf
+          echo "$SECRET_CONF" > ~/.config/rclone/rclone.conf
 
       - name: Stream Files to Proton
         run: |
