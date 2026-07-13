@@ -25,7 +25,8 @@ jobs:
       - name: Stream Files to Proton
         run: |
           rclone copy "gdrive:${{ github.event.inputs.source_path }}" "proton:${{ github.event.inputs.dest_path }}" \
-            --vfs-cache-mode off \
-            --stats 30s \
+            --in-memory \
+            --check-first \
+            --stats 30s 
             --tpslimit 10 \
             -v
