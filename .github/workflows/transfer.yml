@@ -1,15 +1,24 @@
-name: GDrive to Proton RAM Stream
+name: Google Services to Proton Stream
 on:
   workflow_dispatch:
     inputs:
+      source_service:
+        description: 'Which service to export?'
+        type: choice
+        required: true
+        options:
+          - gdrive
+          - gphotos
+        default: gdrive
       source_path:
-        description: 'Folder in Google Drive (leave blank for root)'
+        description: 'Specific folder (leave blank to auto-sync everything safely)'
         required: false
         default: ''
       dest_path:
-        description: 'Folder in Proton Drive'
+        description: 'Destination folder in Proton Drive'
         required: true
-        default: 'GoogleDrive_Backup'
+        default: 'Google_Backup'
+
 jobs:
   migrate-data:
     runs-on: ubuntu-latest
@@ -26,8 +35,30 @@ jobs:
 
       - name: Stream Files to Proton
         run: |
-          rclone copy "gdrive:${{ github.event.inputs.source_path }}" "proton:${{ github.event.inputs.dest_path }}" \
+          # 1. Auto-handle the Google Photos duplicate issue
+          FINAL_SOURCE="${{ inputs.source_path }}"
+
+          if [[ "${{ inputs.source_service }}" == "gphotos" && -z "$FINAL_SOURCE" ]]; then
+            # Default to media/by-year to prevent downloading albums and raw files twice
+            FINAL_SOURCE="media/by-year"
+            echo "Google Photos selected with empty path. Auto-targeting '$FINAL_SOURCE' to avoid duplicates."
+          fi
+
+          # 2. Construct the exact remote path
+          if [[ -z "$FINAL_SOURCE" ]]; then
+            REMOTE_SOURCE="${{ inputs.source_service }}:"
+          else
+            REMOTE_SOURCE="${{ inputs.source_service }}:${FINAL_SOURCE}"
+          fi
+
+          echo "Starting stream from $REMOTE_SOURCE to proton:${{ inputs.dest_path }}"
+
+          # 3. Execute with rate-limit protections
+          rclone copy "$REMOTE_SOURCE" "proton:${{ inputs.dest_path }}" \
             --check-first \
-            --stats 30s 
             --tpslimit 10 \
+            --transfers 4 \
+            --retries 5 \
+            --retries-sleep 30s \
+            --stats 30s \
             -v
