@@ -1,4 +1,5 @@
 name: Google Services to Proton Stream
+
 on:
   workflow_dispatch:
     inputs:
@@ -37,7 +38,6 @@ jobs:
         run: |
           # 1. Auto-handle the Google Photos duplicate issue
           FINAL_SOURCE="${{ inputs.source_path }}"
-
           if [[ "${{ inputs.source_service }}" == "gphotos" && -z "$FINAL_SOURCE" ]]; then
             # Default to media/by-year to prevent downloading albums and raw files twice
             FINAL_SOURCE="media/by-year"
@@ -53,9 +53,10 @@ jobs:
 
           echo "Starting stream from $REMOTE_SOURCE to proton:${{ inputs.dest_path }}"
 
-          # 3. Execute with rate-limit protections
+          # 3. Execute with rate-limit protections & draft conflict handling
           rclone copy "$REMOTE_SOURCE" "proton:${{ inputs.dest_path }}" \
             --check-first \
+            --protondrive-replace-existing-draft \
             --tpslimit 10 \
             --transfers 4 \
             --retries 5 \
